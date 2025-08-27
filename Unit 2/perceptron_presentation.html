@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rosenblatt's Perceptron</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            overflow: hidden;
+        }
+
+        .presentation-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .slide {
+            display: none;
+            width: 90%;
+            max-width: 1000px;
+            height: 80%;
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        h1 {
+            color: #4a5568;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-align: center;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+        }
+
+        h2 {
+            color: #2d3748;
+            font-size: 2em;
+            margin-bottom: 25px;
+            border-left: 5px solid #667eea;
+            padding-left: 15px;
+        }
+
+        h3 {
+            color: #4a5568;
+            font-size: 1.4em;
+            margin-bottom: 15px;
+            margin-top: 20px;
+        }
+
+        p, li {
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        ul {
+            margin-left: 20px;
+            margin-bottom: 20px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        .math {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2em;
+            text-align: center;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .perceptron-diagram {
+            width: 100%;
+            height: 300px;
+            background: #f8f9fa;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        button:hover {
+            background: white;
+            color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .slide-counter {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            color: white;
+            font-weight: bold;
+        }
+
+        .algorithm-box {
+            background: #e6fffa;
+            border: 2px solid #38b2ac;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .theorem-box {
+            background: #fef5e7;
+            border: 2px solid #ed8936;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .highlight {
+            background: #fed7d7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #c53030;
+            font-weight: bold;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .node {
+            fill: #667eea;
+            stroke: #4a5568;
+            stroke-width: 2;
+        }
+
+        .input-node {
+            fill: #48bb78;
+        }
+
+        .output-node {
+            fill: #ed8936;
+        }
+
+        .connection {
+            stroke: #4a5568;
+            stroke-width: 2;
+            marker-end: url(#arrowhead);
+        }
+
+        .weight-label {
+            font-size: 12px;
+            font-weight: bold;
+            fill: #2d3748;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <div class="slide-counter">
+            <span id="current-slide">1</span> / <span id="total-slides">9</span>
+        </div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <h1>Unit 2: Rosenblatt's Perceptron</h1>
+            <div style="text-align: center; margin-top: 60px;">
+                <h2 style="border: none; color: #667eea;">Neural Networks and Learning Machines</h2>
+                <p style="font-size: 1.3em; margin-top: 40px; color: #4a5568;">
+                    A Comprehensive Study of the Perceptron Algorithm
+                </p>
+                <div style="margin-top: 80px;">
+                    <h3>Topics Covered:</h3>
+                    <ul style="text-align: left; display: inline-block; margin-top: 20px;">
+                        <li>Introduction to Perceptron</li>
+                        <li>Perceptron Convergence Theorem</li>
+                        <li>Relation to Bayes Classifier</li>
+                        <li>Batch Perceptron Algorithm</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: Introduction to Perceptron -->
+        <div class="slide">
+            <h2>Introduction to Perceptron</h2>
+            <p>The perceptron, introduced by Frank Rosenblatt in 1957, is the simplest form of artificial neural network used for binary classification problems.</p>
+            
+            <h3>Key Characteristics:</h3>
+            <ul>
+                <li><strong>Linear Classifier:</strong> Separates input space with a hyperplane</li>
+                <li><strong>Single Layer:</strong> No hidden layers, direct input-to-output mapping</li>
+                <li><strong>Binary Output:</strong> Produces discrete output (0 or 1, -1 or +1)</li>
+                <li><strong>Supervised Learning:</strong> Learns from labeled training examples</li>
+            </ul>
+
+            <h3>Historical Significance:</h3>
+            <p>The perceptron laid the foundation for modern neural networks and machine learning, despite its limitations for non-linearly separable problems.</p>
+
+            <div class="highlight">
+                Foundation of artificial neural networks and pattern recognition
+            </div>
+        </div>
+
+        <!-- Slide 3: Perceptron Architecture -->
+        <div class="slide">
+            <h2>Perceptron Architecture</h2>
+            
+            <div class="perceptron-diagram">
+                <svg viewBox="0 0 600 250">
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                                refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#4a5568"/>
+                        </marker>
+                    </defs>
+                    
+                    <!-- Input nodes -->
+                    <circle cx="80" cy="60" r="20" class="node input-node"/>
+                    <text x="80" y="65" text-anchor="middle" class="weight-label">x₁</text>
+                    
+                    <circle cx="80" cy="120" r="20" class="node input-node"/>
+                    <text x="80" y="125" text-anchor="middle" class="weight-label">x₂</text>
+                    
+                    <circle cx="80" cy="180" r="20" class="node input-node"/>
+                    <text x="80" y="185" text-anchor="middle" class="weight-label">xₙ</text>
+                    
+                    <!-- Bias input -->
+                    <circle cx="80" cy="30" r="15" class="node input-node"/>
+                    <text x="80" y="35" text-anchor="middle" class="weight-label" style="font-size: 10px;">+1</text>
+                    
+                    <!-- Summation node -->
+                    <circle cx="300" cy="115" r="30" class="node"/>
+                    <text x="300" y="120" text-anchor="middle" class="weight-label">Σ</text>
+                    
+                    <!-- Activation function -->
+                    <rect x="380" y="95" width="60" height="40" rx="20" class="node"/>
+                    <text x="410" y="118" text-anchor="middle" class="weight-label">φ(·)</text>
+                    
+                    <!-- Output -->
+                    <circle cx="520" cy="115" r="20" class="node output-node"/>
+                    <text x="520" y="120" text-anchor="middle" class="weight-label">y</text>
+                    
+                    <!-- Connections -->
+                    <line x1="100" y1="30" x2="270" y2="100" class="connection"/>
+                    <line x1="100" y1="60" x2="270" y2="105" class="connection"/>
+                    <line x1="100" y1="120" x2="270" y2="115" class="connection"/>
+                    <line x1="100" y1="180" x2="270" y2="125" class="connection"/>
+                    
+                    <line x1="330" y1="115" x2="380" y2="115" class="connection"/>
+                    <line x1="440" y1="115" x2="500" y2="115" class="connection"/>
+                    
+                    <!-- Weight labels -->
+                    <text x="150" y="45" class="weight-label">w₀</text>
+                    <text x="150" y="75" class="weight-label">w₁</text>
+                    <text x="150" y="125" class="weight-label">w₂</text>
+                    <text x="150" y="155" class="weight-label">wₙ</text>
+                </svg>
+            </div>
+
+            <div class="math">
+                y = φ(w₀ + w₁x₁ + w₂x₂ + ... + wₙxₙ) = φ(wᵀx + b)
+            </div>
+        </div>
+
+        <!-- Slide 4: Perceptron Algorithm -->
+        <div class="slide">
+            <h2>Perceptron Learning Algorithm</h2>
+            
+            <div class="algorithm-box">
+                <h3>Algorithm Steps:</h3>
+                <ol>
+                    <li><strong>Initialize:</strong> Set weights w and bias b to small random values</li>
+                    <li><strong>For each training example (x, d):</strong>
+                        <ul>
+                            <li>Compute output: y = sign(wᵀx + b)</li>
+                            <li>Calculate error: e = d - y</li>
+                            <li>Update weights: w ← w + η·e·x</li>
+                            <li>Update bias: b ← b + η·e</li>
+                        </ul>
+                    </li>
+                    <li><strong>Repeat</strong> until convergence or maximum iterations</li>
+                </ol>
+            </div>
+
+            <h3>Key Parameters:</h3>
+            <ul>
+                <li><strong>η (eta):</strong> Learning rate (typically 0 < η ≤ 1)</li>
+                <li><strong>d:</strong> Desired output (target class)</li>
+                <li><strong>y:</strong> Actual output from perceptron</li>
+                <li><strong>e:</strong> Error signal (d - y)</li>
+            </ul>
+
+            <div class="math">
+                Activation Function: φ(v) = sign(v) = {+1 if v ≥ 0, -1 if v < 0}
+            </div>
+        </div>
+
+        <!-- Slide 5: Perceptron Convergence Theorem -->
+        <div class="slide">
+            <h2>Perceptron Convergence Theorem</h2>
+            
+            <div class="theorem-box">
+                <h3>Theorem Statement:</h3>
+                <p>If the training data is <span class="highlight">linearly separable</span>, then the perceptron learning algorithm will converge to a solution in a <span class="highlight">finite number of steps</span>.</p>
+            </div>
+
+            <h3>Key Conditions:</h3>
+            <ul>
+                <li><strong>Linear Separability:</strong> There exists a hyperplane that perfectly separates the two classes</li>
+                <li><strong>Finite Training Set:</strong> The number of training examples is finite</li>
+                <li><strong>Fixed Learning Rate:</strong> η > 0 and constant</li>
+            </ul>
+
+            <h3>Convergence Bound:</h3>
+            <div class="math">
+                Number of updates ≤ R²||w*||²/γ²
+            </div>
+            <p><strong>Where:</strong></p>
+            <ul>
+                <li>R = maximum distance of any training point from origin</li>
+                <li>w* = optimal weight vector</li>
+                <li>γ = margin of separation</li>
+            </ul>
+
+            <p><strong>Limitation:</strong> No convergence guarantee for non-linearly separable data</p>
+        </div>
+
+        <!-- Slide 6: Geometric Interpretation -->
+        <div class="slide">
+            <h2>Geometric Interpretation</h2>
+            
+            <h3>Decision Boundary:</h3>
+            <p>The perceptron creates a linear decision boundary (hyperplane) that separates the input space:</p>
+            <div class="math">
+                wᵀx + b = 0
+            </div>
+
+            <h3>Classification Rule:</h3>
+            <ul>
+                <li><strong>Class +1:</strong> wᵀx + b > 0 (above/right of boundary)</li>
+                <li><strong>Class -1:</strong> wᵀx + b < 0 (below/left of boundary)</li>
+            </ul>
+
+            <h3>Weight Vector Properties:</h3>
+            <ul>
+                <li><strong>Direction:</strong> Perpendicular to decision boundary</li>
+                <li><strong>Magnitude:</strong> Determines the margin confidence</li>
+                <li><strong>Updates:</strong> Rotate boundary toward correct classification</li>
+            </ul>
+
+            <h3>Learning Process:</h3>
+            <p>Each weight update moves the decision boundary to correctly classify misclassified points, gradually finding the optimal separating hyperplane.</p>
+        </div>
+
+        <!-- Slide 7: Relation to Bayes Classifier -->
+        <div class="slide">
+            <h2>Relation between Perceptron and Bayes Classifier</h2>
+            
+            <h3>For Gaussian Environment:</h3>
+            <p>Under specific conditions, the perceptron approximates the optimal Bayes classifier:</p>
+
+            <h3>Assumptions:</h3>
+            <ul>
+                <li><strong>Gaussian Distributions:</strong> Both classes follow multivariate Gaussian distributions</li>
+                <li><strong>Equal Covariances:</strong> Σ₁ = Σ₂ = Σ</li>
+                <li><strong>Equal Priors:</strong> P(C₁) = P(C₂) = 0.5</li>
+            </ul>
+
+            <div class="algorithm-box">
+                <h3>Bayes Decision Boundary:</h3>
+                <div class="math">
+                    (μ₁ - μ₂)ᵀΣ⁻¹x + ½(μ₂ᵀΣ⁻¹μ₂ - μ₁ᵀΣ⁻¹μ₁) = 0
+                </div>
+                <p>This is also a linear boundary, similar to the perceptron!</p>
+            </div>
+
+            <h3>Key Differences:</h3>
+            <ul>
+                <li><strong>Bayes:</strong> Optimal classifier based on probability theory</li>
+                <li><strong>Perceptron:</strong> Algorithmic approach that can approximate Bayes under certain conditions</li>
+                <li><strong>Performance:</strong> Bayes is theoretically optimal; perceptron is practical and efficient</li>
+            </ul>
+        </div>
+
+        <!-- Slide 8: Batch Perceptron Algorithm -->
+        <div class="slide">
+            <h2>Batch Perceptron Algorithm</h2>
+            
+            <p>The batch version processes all training examples before updating weights, unlike the online version that updates after each example.</p>
+
+            <div class="algorithm-box">
+                <h3>Batch Algorithm Steps:</h3>
+                <ol>
+                    <li><strong>Initialize:</strong> Set weight vector w to small random values</li>
+                    <li><strong>For each epoch:</strong>
+                        <ul>
+                            <li>Accumulate error gradient: Δw = 0</li>
+                            <li>For each training example (xᵢ, dᵢ):
+                                <ul>
+                                    <li>Compute: yᵢ = sign(wᵀxᵢ)</li>
+                                    <li>If yᵢ ≠ dᵢ: Δw ← Δw + dᵢxᵢ</li>
+                                </ul>
+                            </li>
+                            <li>Update weights: w ← w + η·Δw</li>
+                        </ul>
+                    </li>
+                    <li><strong>Repeat</strong> until convergence</li>
+                </ol>
+            </div>
+
+            <h3>Advantages of Batch Processing:</h3>
+            <ul>
+                <li><strong>Stability:</strong> More stable convergence compared to online learning</li>
+                <li><strong>Parallelization:</strong> Can process examples in parallel</li>
+                <li><strong>Better Convergence:</strong> Smoother weight updates</li>
+            </ul>
+
+            <h3>Disadvantages:</h3>
+            <ul>
+                <li><strong>Memory:</strong> Requires storing all training data</li>
+                <li><strong>Speed:</strong> Slower adaptation to individual examples</li>
+            </ul>
+        </div>
+
+        <!-- Slide 9: Limitations and Extensions -->
+        <div class="slide">
+            <h2>Limitations and Modern Extensions</h2>
+            
+            <h3>Perceptron Limitations:</h3>
+            <ul>
+                <li><strong>Linear Separability:</strong> Cannot solve XOR problem or other non-linearly separable problems</li>
+                <li><strong>Single Layer:</strong> Limited representational power</li>
+                <li><strong>Binary Classification:</strong> Originally designed for two-class problems only</li>
+                <li><strong>No Probabilistic Output:</strong> Provides hard classifications, not probabilities</li>
+            </ul>
+
+            <h3>Modern Extensions:</h3>
+            <ul>
+                <li><strong>Multi-Layer Perceptron (MLP):</strong> Multiple layers with non-linear activation functions</li>
+                <li><strong>Support Vector Machines:</strong> Maximum margin classifiers with kernel methods</li>
+                <li><strong>Deep Neural Networks:</strong> Many layers enabling complex pattern recognition</li>
+                <li><strong>Voted Perceptron:</strong> Ensemble method improving generalization</li>
+            </ul>
+
+            <div class="theorem-box">
+                <h3>Legacy and Impact:</h3>
+                <p>Despite its limitations, the perceptron remains fundamental to understanding neural networks and serves as the building block for more sophisticated algorithms.</p>
+            </div>
+
+            <div style="text-align: center; margin-top: 40px;">
+                <h3>Thank You!</h3>
+                <p>Questions and Discussion</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="previousSlide()" id="prevBtn">Previous</button>
+        <button onclick="nextSlide()" id="nextBtn">Next</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        
+        document.getElementById('total-slides').textContent = totalSlides;
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            
+            document.getElementById('current-slide').textContent = currentSlide + 1;
+            
+            // Update button states
+            document.getElementById('prevBtn').disabled = currentSlide === 0;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides - 1;
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) {
+                showSlide(currentSlide + 1);
+            }
+        }
+
+        function previousSlide() {
+            if (currentSlide > 0) {
+                showSlide(currentSlide - 1);
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowRight' || event.key === ' ') {
+                nextSlide();
+            } else if (event.key === 'ArrowLeft') {
+                previousSlide();
+            }
+        });
+
+        // Initialize
+        showSlide(0);
+    </script>
+</body>
+</html>
